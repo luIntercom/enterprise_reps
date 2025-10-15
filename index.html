@@ -24,142 +24,73 @@
 
       // --- Random user generators ---
       function randomId() {
-        // reasonably unique short id
         return (
-          "u_" +
-          Math.random().toString(36).slice(2, 10) +
-          Date.now().toString(36).slice(-4)
+          "u_" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4)
         );
       }
 
       function randomName() {
-        const first = [
-          "Alex",
-          "Sam",
-          "Taylor",
-          "Jordan",
-          "Riley",
-          "Casey",
-          "Morgan",
-          "Avery",
-          "Quinn",
-          "Drew",
-        ];
-        const last = [
-          "Hart",
-          "Lane",
-          "Reed",
-          "Shaw",
-          "Blake",
-          "Wren",
-          "Vale",
-          "West",
-          "Kerr",
-          "Hayes",
-        ];
-        return (
-          first[Math.floor(Math.random() * first.length)] +
-          " " +
-          last[Math.floor(Math.random() * last.length)]
-        );
+        const first = ["Alex","Sam","Taylor","Jordan","Riley","Casey","Morgan","Avery","Quinn","Drew"];
+        const last = ["Hart","Lane","Reed","Shaw","Blake","Wren","Vale","West","Kerr","Hayes"];
+        return first[Math.floor(Math.random()*first.length)] + " " + last[Math.floor(Math.random()*last.length)];
       }
 
       function generateUser() {
         const id = randomId();
-        return {
-          user_id: id,
-          email: `${id}@example.test`,
-          name: randomName(),
-        };
+        return { user_id: id, email: `${id}@example.test`, name: randomName() };
       }
 
       // --- Intercom boot helpers ---
-      const APP_ID = "qimjpj9t"; // keep your app id here
+      const APP_ID = "qimjpj9t"; // your app id
+
+      // Define intercomSettings *before* loading the widget to avoid the "App ID not set" warning.
+      window.intercomSettings = {
+        api_base: "https://api-iam.intercom.io",
+        app_id: APP_ID,
+        hide_default_launcher: false,
+      };
 
       function bootIntercom(user) {
-        // If Intercom already booted, shutdown before re-booting with a new identity
         if (typeof window.Intercom === "function") {
           try { window.Intercom("shutdown"); } catch (e) {}
         }
 
+        // Merge identity
         window.intercomSettings = {
-          api_base: "https://api-iam.intercom.io",
-          app_id: APP_ID,
+          ...window.intercomSettings,
           user_id: user.user_id,
           email: user.email,
           name: user.name,
           hand_off_with_javascript: () => {
-            // Redirect user to the relative URL
             window.location.href = "./US_SFDC_demo/portal/";
           },
         };
 
         if (typeof window.Intercom === "function") {
           window.Intercom("boot", window.intercomSettings);
+          // Force-show in case workspace display rules hide the launcher
+          window.Intercom("show");
         }
       }
 
       function assignNewUser() {
         const user = generateUser();
         bootIntercom(user);
-        // reflect current identity in the UI
         const badge = document.getElementById("userBadge");
-        if (badge) {
-          badge.textContent = `${user.name} • ${user.email}`;
-        }
-      }
-
-      // --- Ticket form helpers ---
-      function toggleForm() {
-        const form = document.getElementById("ticketForm");
-        form.classList.toggle("hidden");
-      }
-
-      function submitTicket(e) {
-        e.preventDefault();
-        const name = document.getElementById("ticketName").value;
-        const email = document.getElementById("ticketEmail").value;
-        const subject = document.getElementById("ticketSubject").value;
-        const message = document.getElementById("ticketMessage").value;
-
-        // For demo: just log form values
-        console.log({ name, email, subject, message });
-        alert("Ticket submitted successfully!");
-
-        // Reset and hide form
-        document.getElementById("ticketForm").reset();
-        toggleForm();
+        if (badge) badge.textContent = `${user.name} • ${user.email}`;
       }
 
       // --- Page lifecycle ---
       window.addEventListener("load", () => {
-        // load Intercom widget script (single inclusion)
+        // Load Intercom widget script ONCE with your app id
         (function () {
-          const w = window; const d = document;
+          const d = document;
           const s = d.createElement("script");
           s.type = "text/javascript";
           s.async = true;
           s.src = `https://widget.intercom.io/widget/${APP_ID}`;
-          const x = d.getElementsByTagName("script")[0];
-          x.parentNode.insertBefore(s, x);
-        })();
-
-        // Wait a tick for widget to register, then assign a user and boot
-        setTimeout(assignNewUser, 300);
-      });
-
-      // Expose actions for buttons
-      function hardReset() {
-        clearBrowserState();
-        // Full page reload (original behavior)
-        window.location.reload();
-      }
-
-      function userReset() {
-        clearBrowserState();
-        assignNewUser(); // no reload; generates a fresh identity
-      }
-    </script>
+          s.onload = () => {
+            // After the widget l
   </head>
 
   <body
