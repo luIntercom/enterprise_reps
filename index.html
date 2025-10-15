@@ -1,0 +1,140 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Fin ZD demo</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script>
+      // --- Helpers: identity generation & persistence ---
+      function uid() {
+        // Try to use a UUID; fall back to a simple random string
+        if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+        return 'u_' + Math.random().toString(36).slice(2, 10);
+      }
+
+      function makeIdentity() {
+        const id = uid();
+        const firstNames = ["Jake","Avery","Charlie","Jordan","Taylor","Riley","Quinn","Alex","Sam","Drew"];
+        const lastNames  = ["Elliot","Harper","Morgan","Reed","Parker","Hayes","Brooks","Campbell","Rowan","Blake"];
+        const name = `${firstNames[Math.floor(Math.random()*firstNames.length)]} ${lastNames[Math.floor(Math.random()*lastNames.length)]}`;
+        // Using the domain from your example exactly as written
+        const email = `${name.toLowerCase().replace(/[^a-z]/g,'')}.${id.slice(0,6)}@enterpisefindemo.com`;
+        return { user_id: `user_${id}`, email, name };
+      }
+
+      function loadOrCreateIdentity() {
+        const cached = {
+          user_id: localStorage.getItem('demo_user_id'),
+          email:   localStorage.getItem('demo_email'),
+          name:    localStorage.getItem('demo_name'),
+        };
+        if (cached.user_id && cached.email && cached.name) return cached;
+        const fresh = makeIdentity();
+        localStorage.setItem('demo_user_id', fresh.user_id);
+        localStorage.setItem('demo_email', fresh.email);
+        localStorage.setItem('demo_name', fresh.name);
+        return fresh;
+      }
+
+      function setIntercomSettingsFromIdentity(identity) {
+        // Update global settings so the snippet picks them up
+        window.intercomSettings = {
+          api_base: "https://api-iam.intercom.io",
+          app_id: "qimjpj9t",
+          user_id: identity.user_id,
+          email: identity.email,
+          name: identity.name
+        };
+      }
+
+      // Generate (or reuse) identity ASAP so it's present before the widget loads
+      (function bootstrapIdentity(){
+        const ident = loadOrCreateIdentity();
+        setIntercomSettingsFromIdentity(ident);
+        // Also expose on window for convenience/debugging
+        window.__demoIdentity = ident;
+      })();
+
+      // --- UI actions ---
+      function reset() {
+        // Clear cookies
+        const cookies = document.cookie.split(";");
+        for (let i=0; i<cookies.length; i++) {
+          const cookie = cookies[i];
+          const eqPos = cookie.indexOf("=");
+          const name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
+          document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
+        }
+        // Clear storage and reload
+        window.localStorage.clear();
+        window.sessionStorage.clear();
+        window.location.reload();
+      }
+
+      function newUser() {
+        // Create a brand new identity and push it to Intercom via update
+        const fresh = makeIdentity();
+        localStorage.setItem('demo_user_id', fresh.user_id);
+        localStorage.setItem('demo_email', fresh.email);
+        localStorage.setItem('demo_name', fresh.name);
+
+        setIntercomSettingsFromIdentity(fresh); // keep global settings in sync
+
+        // Intercom stub will queue this if the widget hasn't loaded yet
+        window.Intercom && window.Intercom('update', {
+          user_id: fresh.user_id,
+          email: fresh.email,
+          name: fresh.name
+        });
+      }
+    </script>
+  </head>
+  <body class="p-6 flex flex-col flex-1 items-center justify-center min-h-screen bg-cover" style="background-image: url('https://downloads.intercomcdn.com/i/o/1051523575/8c16c6bb97ae791131ead20c/blur.jpg')">
+    <div class="flex flex-col space-y-2 items-center">
+      <div>
+        <img src="https://static.intercomassets.com/assets/default-avatars/fin/128-6a5eabbb84cc2b038b2afc6698ca0a974faf7adc9ea9f0fb3c3e78ac12543bc5.png" height="50" width="50">
+      </div>
+      <div class="flex gap-2">
+        <button class="bg-black text-white px-3 py-2 rounded hover:bg-opacity-75" onclick="reset()">Reset</button>
+        <button class="bg-indigo-600 text-white px-3 py-2 rounded hover:bg-indigo-700" onclick="newUser()">New user</button>
+      </div>
+      <div class="mt-2 text-xs text-white/80">
+        <span id="whoami"></span>
+      </div>
+    </div>
+
+    <script>
+      // Optional: show current identity in the UI (for demo/debug)
+      window.addEventListener('load', function(){
+        const ident = window.__demoIdentity || loadOrCreateIdentity();
+        const el = document.getElementById('whoami');
+        if (el) el.textContent = `Signed in as ${ident.name} (${ident.email})`;
+      });
+    </script>
+
+    <!-- Intercom boot/update settings are already on window.intercomSettings -->
+    <script>
+      // Basic JavaScript install (per docs): this uses your example app_id
+      (function(){
+        var w=window; var ic=w.Intercom;
+        if(typeof ic==="function"){ ic('reattach_activator'); ic('update', w.intercomSettings); }
+        else {
+          var d=document; var i=function(){ i.c(arguments); }; i.q=[];
+          i.c=function(args){ i.q.push(args); }; w.Intercom=i;
+          function l(){
+            var s=d.createElement('script'); s.type='text/javascript'; s.async=true;
+            s.src='https://widget.intercom.io/widget/qimjpj9t'; // match app_id above
+            var x=d.getElementsByTagName('script')[0]; x.parentNode.insertBefore(s,x);
+          }
+          if(d.readyState==='complete'){ l(); }
+          else if(w.attachEvent){ w.attachEvent('onload', l); }
+          else { w.addEventListener('load', l, false); }
+        }
+      })();
+    </script>
+
+    
+  </body>
+</html>
